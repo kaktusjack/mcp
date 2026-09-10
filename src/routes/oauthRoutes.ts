@@ -12,12 +12,36 @@ oauthRouter.get("/.well-known/oauth-authorization-server", (req, res) => {
     issuer: base,
     authorization_endpoint: `${base}/authorize`,
     token_endpoint: `${base}/token`,
+    registration_endpoint: `${base}/register`,   // ADD THIS LINE
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
   });
 });
 
+
+// In-memory store — swap for DB/Redis later, same caveat as sessions/tokens
+const registeredClients = new Map<string, { redirect_uris: string[] }>();
+
+oauthRouter.post("/register", (req, res) => {
+  const { redirect_uris, client_name } = req.body;
+
+  if (!redirect_uris || !Array.isArray(redirect_uris)) {
+    return res.status(400).json({ error: "invalid_client_metadata" });
+  }
+
+  const client_id = randomUUID();
+  registeredClients.set(client_id, { redirect_uris });
+
+  res.status(201).json({
+    client_id,
+    client_name: client_name ?? "MCP Client",
+    redirect_uris,
+    token_endpoint_auth_method: "none", // public client, no secret needed for this flow
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+  });
+});
 // src/routes/oauthRoutes.ts
 
 oauthRouter.get("/authorize", (req, res) => {
