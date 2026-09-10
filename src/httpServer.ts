@@ -9,6 +9,7 @@ import { oauthRouter } from "./routes/oauthRoutes.js";
 import { resolveAccessToken } from "./auth/tokenStore.js";
 
 const app = express();
+app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // needed for the login form POST
@@ -66,7 +67,7 @@ app.get("/.well-known/oauth-protected-resource", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`MCP HTTP server running on port ${PORT}`);
 });
