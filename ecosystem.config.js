@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   apps: [{
     name: "exam-mcp",
     script: "dist/httpServer.js",
