@@ -4,7 +4,7 @@ module.exports = {
     script: "dist/httpServer.js",
     env: {
       DJANGO_API_BASE_URL: "https://api.prepx.app",
-      PORT: 3001
+      PORT: 3000
     }
   }]
 };
