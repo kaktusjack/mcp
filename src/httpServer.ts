@@ -7,17 +7,16 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { registerAllTools } from "./tools/index.js";
 import { oauthRouter } from "./routes/oauthRoutes.js";
 import { resolveAccessToken } from "./auth/tokenStore.js";
+import { linkMcpSessionToDjango } from "./auth/sessionMap.js"; // ADD THIS IMPORT
 
 const app = express();
 app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // needed for the login form POST
+app.use(express.urlencoded({ extended: true }));
 
-// --- OAuth endpoints (/.well-known, /authorize, /token, /authorize/google*) ---
 app.use(oauthRouter);
 
-// --- Track one MCP transport per active session, keyed by mcp-session-id header ---
 const transports = new Map<string, StreamableHTTPServerTransport>();
 
 app.post("/mcp", async (req, res) => {
@@ -38,6 +37,7 @@ app.post("/mcp", async (req, res) => {
 
   const existingSessionId = req.headers["mcp-session-id"] as string | undefined;
   let transport = existingSessionId ? transports.get(existingSessionId) : undefined;
+  console.log(`Existing MCP session ID: ${existingSessionId}, transport found: ${!!transport}`);
 
   if (!transport) {
     const server = new McpServer({ name: "exam-systems", version: "1.0.0" });
@@ -47,11 +47,12 @@ app.post("/mcp", async (req, res) => {
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sid) => {
         transports.set(sid, transport!);
+        linkMcpSessionToDjango(sid, djangoSessionId); // ADD THIS LINE — was missing entirely
       },
     });
 
-    // Attach the resolved Django session so tools can read it via `extra`
-    (transport as any).djangoSessionId = djangoSessionId;
+    // DELETE THIS LINE — it was never actually read anywhere:
+    // (transport as any).djangoSessionId = djangoSessionId;
 
     await server.connect(transport);
   }
@@ -59,7 +60,6 @@ app.post("/mcp", async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
-// --- Required MCP spec endpoint: tells clients where auth lives ---
 app.get("/.well-known/oauth-protected-resource", (req, res) => {
   const base = `${req.protocol}://${req.get("host")}`;
   res.json({

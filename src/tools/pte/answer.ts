@@ -42,6 +42,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getAnswerSchema } from "../../schema/pte/answer.js";
 import { djangoClient } from "../../clients/djangoClient.js";
 import { createSessionFromCredentials } from "../../auth/oauth.js"; // adjust path to match your real oauth.ts location
+import { getDjangoSessionForMcp } from "../../auth/sessionMap.js";
 
 // TEMPORARY — for local Claude Desktop testing only, remove once real OAuth is wired
 let cachedTestSessionId: string | null = null;
@@ -61,9 +62,10 @@ export function registerAnswerTools(server: McpServer) {
     "Get a test answer by answer id, or all answers for a test session by testid.",
     getAnswerSchema.shape,
     async ({ id, testid }, extra) => {
-        const mcpSessionId = (extra as any).djangoSessionId; // set by httpServer.ts per-connection
+        const mcpSessionId = getDjangoSessionForMcp(extra.sessionId ?? ""); // set by httpServer.ts per-connection
 
         if (!mcpSessionId) {
+          console.log("No Django session found for MCP session:", extra.sessionId);
             return {
             content: [{ type: "text", text: "Not authenticated — please reconnect the connector." }],
             isError: true,
