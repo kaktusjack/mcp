@@ -1,7 +1,8 @@
+// src/routes/oauthRoutes.ts
 import { Router } from "express";
-import { createSessionFromCredentials } from "../auth/oauth.js";
-import { createAuthCode, consumeAuthCode, createAccessToken } from "../auth/tokenStore.js";
 import { randomUUID } from "crypto";
+import { createSessionFromCredentials, storeSessionFromTokens } from "../auth/oauth.js";
+import { createAuthCode, consumeAuthCode, createAccessToken } from "../auth/tokenStore.js";
 
 export const oauthRouter = Router();
 
@@ -12,13 +13,12 @@ oauthRouter.get("/.well-known/oauth-authorization-server", (req, res) => {
     issuer: base,
     authorization_endpoint: `${base}/authorize`,
     token_endpoint: `${base}/token`,
-    registration_endpoint: `${base}/register`,   // ADD THIS LINE
+    registration_endpoint: `${base}/register`,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
   });
 });
-
 
 // In-memory store — swap for DB/Redis later, same caveat as sessions/tokens
 const registeredClients = new Map<string, { redirect_uris: string[] }>();
@@ -37,13 +37,13 @@ oauthRouter.post("/register", (req, res) => {
     client_id,
     client_name: client_name ?? "MCP Client",
     redirect_uris,
-    token_endpoint_auth_method: "none", // public client, no secret needed for this flow
+    token_endpoint_auth_method: "none",
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
   });
 });
-// src/routes/oauthRoutes.ts
 
+// Step 2: show login form
 oauthRouter.get("/authorize", (req, res) => {
   const { redirect_uri, state, client_id } = req.query;
 
@@ -71,15 +71,8 @@ oauthRouter.get("/authorize", (req, res) => {
           width: 320px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
-        h2 {
-          margin: 0 0 4px;
-          font-size: 20px;
-        }
-        p.sub {
-          margin: 0 0 24px;
-          color: #94a3b8;
-          font-size: 14px;
-        }
+        h2 { margin: 0 0 4px; font-size: 20px; }
+        p.sub { margin: 0 0 24px; color: #94a3b8; font-size: 14px; }
         input {
           width: 100%;
           padding: 10px 12px;
@@ -129,11 +122,7 @@ oauthRouter.get("/authorize", (req, res) => {
           font-size: 14px;
         }
         .google-btn:hover { background: #334155; }
-        .error {
-          color: #f87171;
-          font-size: 13px;
-          margin-bottom: 12px;
-        }
+        .error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
       </style>
     </head>
     <body>
@@ -206,7 +195,7 @@ oauthRouter.post("/token", (req, res) => {
 
 // Step A: browser hits this from the "Sign in with Google" link
 oauthRouter.get("/authorize/google", async (req, res) => {
-  const { redirect_uri, state } = req.query; // MCP's own state (Claude/ChatGPT's), keep separate from Django's
+  const { redirect_uri, state } = req.query;
   const mcpCallback = `${req.protocol}://${req.get("host")}/authorize/google/callback?mcp_state=${state}&mcp_redirect_uri=${encodeURIComponent(redirect_uri as string)}`;
 
   const initiateRes = await fetch(
@@ -220,10 +209,7 @@ oauthRouter.get("/authorize/google", async (req, res) => {
 oauthRouter.get("/authorize/google/callback", (req, res) => {
   const { access, refresh, mcp_state, mcp_redirect_uri } = req.query;
 
-  // Wrap the Django JWT pair as a "session", same shape as email/password login
-  const sessionId = randomUUID();
-  // reuse your in-memory session store from oauth.ts — export a helper there:
-  // storeSession(sessionId, { accessToken: access, refreshToken: refresh, expiresAt: ... })
+  const sessionId = storeSessionFromTokens(access as string, refresh as string);
 
   const code = createAuthCode(sessionId, mcp_redirect_uri as string);
   const redirectUrl = new URL(mcp_redirect_uri as string);
