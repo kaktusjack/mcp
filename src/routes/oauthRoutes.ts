@@ -9,6 +9,10 @@ export const oauthRouter = Router();
 // Step 1: tells clients where the endpoints live (required by MCP spec)
 oauthRouter.get("/.well-known/oauth-authorization-server", (req, res) => {
   const base = `${req.protocol}://${req.get("host")}`;
+  console.log("OAuth discovery endpoint hit, returning:", {
+    issuer: base,
+    authorization_endpoint: `${base}/authorize`,
+  });
   res.json({
     issuer: base,
     authorization_endpoint: `${base}/authorize`,
@@ -32,6 +36,7 @@ oauthRouter.post("/register", (req, res) => {
 
   const client_id = randomUUID();
   registeredClients.set(client_id, { redirect_uris });
+  console.log(`Registered new client: ${client_id} with redirect URIs:`, redirect_uris);
 
   res.status(201).json({
     client_id,
@@ -164,6 +169,7 @@ oauthRouter.post("/authorize", async (req, res) => {
     const redirectUrl = new URL(redirect_uri);
     redirectUrl.searchParams.set("code", code);
     if (state) redirectUrl.searchParams.set("state", state);
+    console.log(`User ${email} authenticated, redirecting to:`, redirectUrl.toString());
     res.redirect(redirectUrl.toString());
   } catch (err) {
     const retryUrl = new URL(`${req.protocol}://${req.get("host")}/authorize`);
@@ -186,6 +192,7 @@ oauthRouter.post("/token", (req, res) => {
     return res.status(400).json({ error: "invalid_grant" });
   }
   const accessToken = createAccessToken(entry.djangoSessionId);
+  console.log(`Exchanged code for access token: ${accessToken} (session: ${entry.djangoSessionId})`);
   res.json({
     access_token: accessToken,
     token_type: "Bearer",

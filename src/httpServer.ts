@@ -30,6 +30,7 @@ app.post("/mcp", async (req, res) => {
   }
 
   const djangoSessionId = resolveAccessToken(token);
+  console.log(`Incoming MCP request with token: ${token}, resolved Django session: ${djangoSessionId}`);
   if (!djangoSessionId) {
     res.status(401).json({ error: "invalid_token" });
     return;

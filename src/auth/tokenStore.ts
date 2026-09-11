@@ -43,5 +43,6 @@ export function createAccessToken(djangoSessionId: string): string {
 export function resolveAccessToken(token: string): string | null {
   const entry = accessTokens.get(token);
   if (!entry || Date.now() > entry.expiresAt) return null;
+  console.log(`Resolved access token: ${token} to Django session: ${entry.djangoSessionId}`);
   return entry.djangoSessionId;
 }
