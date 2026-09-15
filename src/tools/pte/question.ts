@@ -29,9 +29,10 @@ export function registerQuestionTools(server: McpServer) {
       const res = await djangoClient.get(`/question/?${params.toString()}`, { mcpSessionId });
 
       if (res.status === 404) {
+        console.log("Question not found for id: %s", id);
         return { content: [{ type: "text", text: "Question not found." }], isError: true };
       }
-
+      console.log("Successfully retrieved question data for id: %s", id);
       return { content: [{ type: "text", text: JSON.stringify(res.data, null, 2) }] };
     }
   );

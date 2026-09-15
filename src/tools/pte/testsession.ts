@@ -27,12 +27,14 @@ export function registerTestSessionTools(server: McpServer) {
       });
 
       if (res.status === 404) {
+        console.log("Test session not found for id: %s", id);
         return { content: [{ type: "text", text: "Test session not found." }], isError: true };
       }
       if (res.status === 403) {
+        console.log("Unauthorized access attempt for test session id: %s", id);
         return { content: [{ type: "text", text: "Unauthorized." }], isError: true };
       }
-
+      console.log("Successfully retrieved test session data for id: %s", id);
       return { content: [{ type: "text", text: JSON.stringify(res.data, null, 2) }] };
     }
   );
