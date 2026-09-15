@@ -53,12 +53,21 @@ async function refreshSession(sessionId: string) {
   sessions.set(sessionId, session);
 }
 
+const refreshPromises = new Map<string, Promise<void>>();
+const REFRESH_MARGIN_MS = 30_000; // refresh 30s before actual expiry
+
 export async function getValidDjangoToken(sessionId: string): Promise<string> {
   const session = sessions.get(sessionId);
   if (!session) throw new Error("Not authenticated — please reconnect the connector.");
 
-  if (Date.now() >= session.expiresAt) {
-    await refreshSession(sessionId);
+  if (Date.now() >= session.expiresAt - REFRESH_MARGIN_MS) {
+    if (!refreshPromises.has(sessionId)) {
+      refreshPromises.set(
+        sessionId,
+        refreshSession(sessionId).finally(() => refreshPromises.delete(sessionId))
+      );
+    }
+    await refreshPromises.get(sessionId);
   }
 
   return sessions.get(sessionId)!.accessToken;

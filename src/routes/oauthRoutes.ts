@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { createSessionFromCredentials, storeSessionFromTokens } from "../auth/oauth.js";
-import { createAuthCode, consumeAuthCode, createAccessToken } from "../auth/tokenStore.js";
+import { createAuthCode, consumeAuthCode, createAccessToken, resolveAccessToken } from "../auth/tokenStore.js";
 
 export const oauthRouter = Router();
 
@@ -148,7 +148,7 @@ oauthRouter.get("/authorize", (req, res) => {
 
         <div class="divider"><span>OR</span></div>
 
-        
+        <a
           class="google-btn"
           href="/authorize/google?redirect_uri=${encodeURIComponent(String(redirect_uri ?? ""))}&state=${encodeURIComponent(String(state ?? ""))}"
         >
@@ -183,21 +183,36 @@ oauthRouter.post("/authorize", async (req, res) => {
 
 // Step 4: exchange code for an MCP access token
 oauthRouter.post("/token", (req, res) => {
-  const { code, grant_type } = req.body;
-  if (grant_type !== "authorization_code") {
-    return res.status(400).json({ error: "unsupported_grant_type" });
+  const { code, grant_type, refresh_token } = req.body;
+
+  if (grant_type === "authorization_code") {
+    const entry = consumeAuthCode(code);
+    if (!entry) {
+      return res.status(400).json({ error: "invalid_grant" });
+    }
+    const accessToken = createAccessToken(entry.djangoSessionId);
+    console.log(`Exchanged code for access token: ${accessToken} (session: ${entry.djangoSessionId})`);
+    return res.json({
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: 86400,
+    });
   }
-  const entry = consumeAuthCode(code);
-  if (!entry) {
-    return res.status(400).json({ error: "invalid_grant" });
+
+  if (grant_type === "refresh_token") {
+    const djangoSessionId = resolveAccessToken(refresh_token);
+    if (!djangoSessionId) {
+      return res.status(400).json({ error: "invalid_grant" });
+    }
+    const accessToken = createAccessToken(djangoSessionId);
+    return res.json({
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: 86400,
+    });
   }
-  const accessToken = createAccessToken(entry.djangoSessionId);
-  console.log(`Exchanged code for access token: ${accessToken} (session: ${entry.djangoSessionId})`);
-  res.json({
-    access_token: accessToken,
-    token_type: "Bearer",
-    expires_in: 86400,
-  });
+
+  return res.status(400).json({ error: "unsupported_grant_type" });
 });
 
 // Step A: browser hits this from the "Sign in with Google" link

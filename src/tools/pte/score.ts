@@ -18,8 +18,11 @@ export function registerScoreTools(server: McpServer) {
         };
       }
 
-      const res = await djangoClient.get(`/score/?id=${testid}`, { mcpSessionId }); // Django still expects `id` as the query param name
-
+      if (!testid) {
+       return { content: [{ type: "text", text: "testid is required." }], isError: true };
+}
+      const params = new URLSearchParams({ id: testid });
+      const res = await djangoClient.get(`/score/?${params.toString()}`, { mcpSessionId });
       if (res.status === 404) {
         return { content: [{ type: "text", text: "Test session not found." }], isError: true };
       }
