@@ -26,7 +26,7 @@ export function registerQuestionTools(server: McpServer) {
       if (attempted) params.set("attempted", attempted);
       if (page) params.set("page", page);
 
-      const res = await djangoClient.get(`/question/?${params.toString()}`, { mcpSessionId });
+      const res = await djangoClient.get(`/ptemock/question/?${params.toString()}`, { mcpSessionId });
 
       if (res.status === 404) {
         console.log("Question not found for id: %s", id);

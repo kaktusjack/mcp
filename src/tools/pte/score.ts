@@ -22,7 +22,7 @@ export function registerScoreTools(server: McpServer) {
        return { content: [{ type: "text", text: "testid is required." }], isError: true };
 }
       const params = new URLSearchParams({ id: testid });
-      const res = await djangoClient.get(`/score/?${params.toString()}`, { mcpSessionId });
+      const res = await djangoClient.get(`/ptemock/score/?${params.toString()}`, { mcpSessionId });
       if (res.status === 404) {
         console.log("Test session not found for id: %s", testid);
         return { content: [{ type: "text", text: "Test session not found." }], isError: true };

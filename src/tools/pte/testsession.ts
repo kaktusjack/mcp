@@ -22,7 +22,7 @@ export function registerTestSessionTools(server: McpServer) {
       const params = new URLSearchParams();
       if (id) params.set("id", id);
 
-      const res = await djangoClient.get(`/testsession/?${params.toString()}`, {
+      const res = await djangoClient.get(`/ptemock/testsession/?${params.toString()}`, {
         mcpSessionId,
       });
 
